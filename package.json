@@ -1,0 +1,26 @@
+{
+  "name": "Run Programatically",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "ng lint",
+    "test:e2e": " env TS_NODE_PROJECT=\"./e2e/tsconfig.json\"  ts-node ./e2e/runner.ts",
+    "build:custom": "ng build --extra-webpack-config webpack.externals.js --prod",
+    "prettier": "prettier \"/**/*.ts\"  --write",
+    "merge": ""
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write",
+      "git add"
+    ],
+    "*.md": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "private": true,
+  "dependencies": {
+    "expect.js": "^0.3.1"
+  }
+}
