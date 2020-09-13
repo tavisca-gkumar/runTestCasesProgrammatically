@@ -1,8 +1,8 @@
 import config from '../test-config.json';
 import expect from 'expect.js';
 
-describe('Testing feature A of base', () => {
-    it('Testing feature A', () => {
+describe('Testing feature A of base', function() {
+    it('Testing feature A', function() {
       if (config.Enable_Feature_A) {
           expect(true).ok();
       } else {
@@ -11,8 +11,8 @@ describe('Testing feature A of base', () => {
     });
   
 });
-describe('Testing feature X of base', () => {
-    it('Testing feature X', () =>{
+describe('Testing feature X of base', function() {
+    it('Testing feature X', function () {
       if (config.Enable_Feature_X) {
           expect(true).ok();
       } else {
