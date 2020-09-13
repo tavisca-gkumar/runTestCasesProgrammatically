@@ -1,12 +1,12 @@
 {
-  "name": "Run Programatically",
+  "name": "run_programmatically",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "lint": "ng lint",
+    "test": "mocha --R spec --recursive --experimental-json-modules './tests/final/**/*spec.js'",
     "test:e2e": " env TS_NODE_PROJECT=\"./e2e/tsconfig.json\"  ts-node ./e2e/runner.ts",
-    "build:custom": "ng build --extra-webpack-config webpack.externals.js --prod",
-    "prettier": "prettier \"/**/*.ts\"  --write",
-    "merge": ""
+    "prettier": "prettier \"/**/*.ts\"  --write"
   },
   "lint-staged": {
     "*.{js,ts}": [
@@ -21,6 +21,7 @@
   },
   "private": true,
   "dependencies": {
-    "expect.js": "^0.3.1"
+    "expect.js": "^0.3.1",
+    "mocha": "^8.1.3"
   }
 }

@@ -1,11 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const Mocha = require('mocha');
-const neek = require('neek');
+import fs from 'fs';
+import path from 'path';
+import mocha from 'mocha';
 // Instantiate a Mocha with options
-const mocha = new Mocha({
-  reporter: 'list'
-});
+// const mocha = new Mocha({
+//   reporter: '',
+// });
 // Use non-default Mocha test directory.
 process.chdir('tests');
 let currentDirectory = process.cwd();
@@ -32,23 +31,15 @@ const getAllFiles = function(baseFolder, arrayOfFiles) {
           fs.mkdirSync(finalDirectoryPath, {recursive: true});
           let baseFolderData = fs.readFileSync(baseFolder + '/' + file.name, {encoding:'utf8', flag:'r'});
           let clientFolderData = fs.readFileSync(rootClientFolder + deepPath + '/' + file.name, {encoding:'utf8', flag:'r'});
-          let writer = fs.createWriteStream(finalDirectoryPath + '/' + file.name);
-          let mergedData;
           if(file.isFile() && file.name.indexOf('config.json') > -1){
-              baseFolderData = baseFolderData ? JSON.parse(baseFolderData): '';
-              clientFolderData = clientFolderData ? JSON.parse(clientFolderData): '';
-              mergedData = {...baseFolderData, ...clientFolderData};
-              writer.write(mergedData ? JSON.stringify(mergedData): '');
-          } else {
-              mergedData =baseFolderData + clientFolderData;
-              mergedData = mergedData
-                  .split("\n")
-                  .filter((item, index, allItems) => {
-                    return (index === allItems.indexOf(item) || (item.indexOf('import') != -1 ||
-                           item.indexOf('require') != -1));
-                  })
-                  .join("\n");
-                  writer.write(mergedData);
+            let writer = fs.createWriteStream(finalDirectoryPath + '/' + file.name);
+            baseFolderData = baseFolderData ? JSON.parse(baseFolderData): '';
+            clientFolderData = clientFolderData ? JSON.parse(clientFolderData): '';
+            const mergedData = {...baseFolderData, ...clientFolderData};
+            writer.write(mergedData ? JSON.stringify(mergedData): '');
+          }else{
+            fs.copyFileSync(baseFolder + '/' + file.name,finalDirectoryPath + '/' + file.name);
+            fs.copyFileSync(rootClientFolder + deepPath +'/' + file.name , finalDirectoryPath +  '/client-' +file.name);
           }
           arrayOfFiles.push(path.join(baseFolder, "/", file.name));
         }
@@ -58,16 +49,31 @@ const getAllFiles = function(baseFolder, arrayOfFiles) {
 }
 console.log(getAllFiles(baseFolder));
 
-// Add each .js file to the mocha instance
-// fs.readdirSync(testDir)
-//   .filter(function(file) {
-//     return path.extname(file) === '.js';
-//   })
-//   .forEach(function(file) {
-//     mocha.addFile(path.join(testDir, file));
+// function getTestFilePaths(dir, fileList) {
+//   var files = fs.readdirSync(dir);
+//   fileList = fileList || [];
+//   files.forEach(function(file) {
+//       if (fs.statSync(path.join(dir, file)).isDirectory()) {
+//           fileList = getTestFilePaths(path.join(dir, file), fileList);
+//       } else {
+//           fileList.push(path.join(dir, file));
+//       }
 //   });
 
-// Run the tests.
+//   return fileList.filter(function (file) {
+//       return path.extname(file) === '.ts';
+//   });
+// }
+
+// // Add each .js file to the mocha instance
+// const testDir = `${currentDirectory}/final`;
+
+// getTestFilePaths(testDir).forEach(function(file) {
+//   mocha.addFile(
+//       path.join(file)
+//   );
+// });
+// //Run the tests.
 // mocha.run(function(failures) {
 //   process.exitCode = failures ? 1 : 0; // exit with non-zero status if there were failures
 // });
