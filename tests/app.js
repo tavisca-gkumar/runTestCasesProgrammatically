@@ -91,3 +91,18 @@ function createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder){
 }
 
 createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder);
+
+function generateTestPlaylist(){
+  const globalConfigData = fs.readFileSync(rootFinalFolder + '/' + globalTestConfigName, {encoding:'utf8', flag:'r'});
+  const jsonGlobalConfigData = globalConfigData ? JSON.parse(globalConfigData): '';
+  const globalConfigDataArray = Object.entries(jsonGlobalConfigData);
+  globalConfigDataArray.forEach(function(data) {
+    if(data[1]){
+      let fileData = fs.readFileSync(rootFinalFolder + `/${data[0]}/` + featureTestConfigName,{encoding:'utf8', flag:'r'});
+      jsonGlobalConfigData[data[0]] = JSON.parse(fileData);
+    }
+  });
+  fs.writeFileSync(process.cwd() + '/testPlaylist.json', JSON.stringify(jsonGlobalConfigData));
+}
+
+generateTestPlaylist();
