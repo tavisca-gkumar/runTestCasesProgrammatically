@@ -1,79 +1,93 @@
 import fs from 'fs';
-import path from 'path';
-import mocha from 'mocha';
-// Instantiate a Mocha with options
-// const mocha = new Mocha({
-//   reporter: '',
-// });
-// Use non-default Mocha test directory.
 process.chdir('tests');
 let currentDirectory = process.cwd();
 let rootBaseFolder = `${currentDirectory}/base`;
-let baseFolder = `${currentDirectory}/base`;
 let rootClientFolder = `${currentDirectory}/client`;
-let clientFolder = `${currentDirectory}/client`;
-// check for directory exists
-function checkInClientFolder(folderName){
-  if(fs.existsSync(`${folderName}`)){
-    return true;
+let rootFinalFolder = `${currentDirectory}/final`;
+const globalTestConfigName = 'global-test-config.json';
+const featureTestConfigName = 'test-config.json';
+
+function getMergedJsonObject(baseData, clientData){
+  const baseJsonData = baseData ? JSON.parse(baseData): '';
+  const clientJsonData = clientData ? JSON.parse(clientData): '';
+  const mergedData = {...baseJsonData, ...clientJsonData};
+  return mergedData;
+}
+
+function getMergedTestConfig(rootBaseFolder, rootClientFolder, configName){
+  let baseConfigData;
+  let clientConfigData;
+  if(fs.existsSync(rootBaseFolder)){
+    baseConfigData = fs.readFileSync(rootBaseFolder + '/' + configName, {encoding:'utf8', flag:'r'});
   }
-  return false;
+  if(fs.existsSync(rootClientFolder)){
+    clientConfigData = fs.readFileSync(rootClientFolder + '/' + configName, {encoding:'utf8', flag:'r'});
+  }
+  const mergedJsonObject = getMergedJsonObject(baseConfigData, clientConfigData);
+  const returnData = {
+    fileName: configName,
+    mergedData: mergedJsonObject
+  };
+  return returnData;
 }
-const getAllFiles = function(baseFolder, arrayOfFiles) {
-  fs.readdirSync(baseFolder,{withFileTypes: true}).forEach((file) => {
-    let deepPath = baseFolder.slice(rootBaseFolder.length);
+
+function writeInFinalFolder (directoryPath, writableData){
+  if(!fs.existsSync(directoryPath + '/' + writableData.fileName)){
+    fs.mkdirSync(directoryPath, {recursive: true});
+    fs.writeFileSync(directoryPath + '/' + writableData.fileName, 
+            JSON.stringify(writableData.mergedData));
+  }
+}
+function writeTestFilesToFinalFolder(featureFolderPath, arrayOfFiles){
+  fs.readdirSync(featureFolderPath, {withFileTypes: true}).forEach((file) => {
+    let deepPath = featureFolderPath.slice(currentDirectory.length);
     arrayOfFiles = arrayOfFiles || [];
-      if(checkInClientFolder(rootClientFolder + deepPath)){
-        if (fs.statSync(baseFolder + "/" + file.name).isDirectory()) {
-          arrayOfFiles = getAllFiles(baseFolder + "/" + file.name, arrayOfFiles);
-        } else {
-          let finalDirectoryPath = baseFolder.replace('base', 'final');
-          fs.mkdirSync(finalDirectoryPath, {recursive: true});
-          let baseFolderData = fs.readFileSync(baseFolder + '/' + file.name, {encoding:'utf8', flag:'r'});
-          let clientFolderData = fs.readFileSync(rootClientFolder + deepPath + '/' + file.name, {encoding:'utf8', flag:'r'});
-          if(file.isFile() && file.name.indexOf('config.json') > -1){
-            let writer = fs.createWriteStream(finalDirectoryPath + '/' + file.name);
-            baseFolderData = baseFolderData ? JSON.parse(baseFolderData): '';
-            clientFolderData = clientFolderData ? JSON.parse(clientFolderData): '';
-            const mergedData = {...baseFolderData, ...clientFolderData};
-            writer.write(mergedData ? JSON.stringify(mergedData): '');
-          }else{
-            fs.copyFileSync(baseFolder + '/' + file.name,finalDirectoryPath + '/' + file.name);
-            fs.copyFileSync(rootClientFolder + deepPath +'/' + file.name , finalDirectoryPath +  '/client-' +file.name);
-          }
-          arrayOfFiles.push(path.join(baseFolder, "/", file.name));
-        }
+    if (fs.statSync(featureFolderPath + "/" + file.name).isDirectory()) {
+      arrayOfFiles = writeTestFilesToFinalFolder(featureFolderPath + "/" + file.name, arrayOfFiles);
+    }else{
+      deepPath = deepPath.indexOf('/base') == 0 ? deepPath.replace('/base', '') : 
+          deepPath.indexOf('/client') == 0 ? deepPath.replace('/client', ''): deepPath;
+      const finalDirectoryPath = rootFinalFolder + deepPath;
+      if(!fs.existsSync(finalDirectoryPath)){
+        fs.mkdirSync(finalDirectoryPath, {recursive: true});
       }
-  })
-  return arrayOfFiles;
+      if(file.isFile() && file.name.indexOf('config.json') == -1){
+        fs.copyFileSync(featureFolderPath + '/' + file.name, finalDirectoryPath + '/' + file.name);
+      }
+    }
+  });
 }
-console.log(getAllFiles(baseFolder));
+function writeTestFilesOfBaseAndClientRecursively(baseFeatureFolder, clientFeatureFolder, featureFolder){
+  writeTestFilesToFinalFolder(baseFeatureFolder);
+  writeTestFilesToFinalFolder(clientFeatureFolder);
+  const mergedFeatureConfigTestData = getMergedTestConfig(baseFeatureFolder , clientFeatureFolder, featureTestConfigName);
+  writeInFinalFolder(rootFinalFolder + '/'+ featureFolder, mergedFeatureConfigTestData);
+}
+function writeFeatureFolderToFinalFolder (rootBaseFolder, rootClientFolder, featureFolderName){
+  const baseFeatureFolder = rootBaseFolder + '/' + featureFolderName;
+  const clientFeatureFolder = rootClientFolder + '/' + featureFolderName;
+  if(fs.existsSync(clientFeatureFolder)){
+      writeTestFilesOfBaseAndClientRecursively(baseFeatureFolder, clientFeatureFolder, featureFolderName);
+  }else{
+    writeTestFilesToFinalFolder(baseFeatureFolder);
+  }
+}
+function removeFinalFolder(){
+  if(fs.existsSync(rootFinalFolder)){
+   fs.rmdirSync(rootFinalFolder,{recursive: true});
+  }
+}
+function createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder){
+  removeFinalFolder();
+  const mergedGlobalConfigTestData = getMergedTestConfig(rootBaseFolder, rootClientFolder, globalTestConfigName);
+  writeInFinalFolder(rootFinalFolder , mergedGlobalConfigTestData);
+  const globalConfigDataArray = Object.entries(mergedGlobalConfigTestData.mergedData);
+  globalConfigDataArray.forEach(featureFolder => {
+    console.log(featureFolder);
+    if(featureFolder[1]){
+      writeFeatureFolderToFinalFolder(rootBaseFolder, rootClientFolder, featureFolder[0]);
+    }
+  });
+}
 
-// function getTestFilePaths(dir, fileList) {
-//   var files = fs.readdirSync(dir);
-//   fileList = fileList || [];
-//   files.forEach(function(file) {
-//       if (fs.statSync(path.join(dir, file)).isDirectory()) {
-//           fileList = getTestFilePaths(path.join(dir, file), fileList);
-//       } else {
-//           fileList.push(path.join(dir, file));
-//       }
-//   });
-
-//   return fileList.filter(function (file) {
-//       return path.extname(file) === '.ts';
-//   });
-// }
-
-// // Add each .js file to the mocha instance
-// const testDir = `${currentDirectory}/final`;
-
-// getTestFilePaths(testDir).forEach(function(file) {
-//   mocha.addFile(
-//       path.join(file)
-//   );
-// });
-// //Run the tests.
-// mocha.run(function(failures) {
-//   process.exitCode = failures ? 1 : 0; // exit with non-zero status if there were failures
-// });
+createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder);

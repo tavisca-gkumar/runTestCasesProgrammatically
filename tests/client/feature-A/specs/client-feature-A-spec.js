@@ -10,3 +10,14 @@ describe('Testing feature Y added in client', function() {
         }
     });
 });
+
+describe('Testing updated feature X of base in client', function() {
+    it('Testing updated feature X in client', function() {
+        if (config.Enable_Feature_X) {
+          expect(1 + 1).equal(2);
+        } else {
+            this.skip();
+        }
+    });
+});
+
