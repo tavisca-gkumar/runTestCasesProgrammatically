@@ -1,4 +1,11 @@
 {
-  "feature-A": true,
-  "feature-B": false
+  "clientConfig":
+  {
+    "client-program-296": true,
+    "client-program-base": true,
+    "baseConfig/program-base": {
+      "feature-A": true,
+      "feature-B": false
+    }
+  }
 }

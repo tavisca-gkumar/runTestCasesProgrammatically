@@ -6,6 +6,7 @@ let rootClientFolder = `${currentDirectory}/client`;
 let rootFinalFolder = `${currentDirectory}/final`;
 const globalTestConfigName = 'global-test-config.json';
 const featureTestConfigName = 'test-config.json';
+const programTestConfigName = 'program-test-config.json';
 
 function getMergedJsonObject(baseData, clientData){
   const baseJsonData = baseData ? JSON.parse(baseData): '';
@@ -77,32 +78,91 @@ function removeFinalFolder(){
    fs.rmdirSync(rootFinalFolder,{recursive: true});
   }
 }
-function createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder){
-  removeFinalFolder();
-  const mergedGlobalConfigTestData = getMergedTestConfig(rootBaseFolder, rootClientFolder, globalTestConfigName);
-  writeInFinalFolder(rootFinalFolder , mergedGlobalConfigTestData);
-  const globalConfigDataArray = Object.entries(mergedGlobalConfigTestData.mergedData);
-  globalConfigDataArray.forEach(featureFolder => {
-    console.log(featureFolder);
-    if(featureFolder[1]){
-      writeFeatureFolderToFinalFolder(rootBaseFolder, rootClientFolder, featureFolder[0]);
+function getGlobalConfigData(rootFolderPath, configName){
+  let configData;
+  if(fs.existsSync(rootFolderPath)){
+    configData = fs.readFileSync(rootFolderPath + '/' + configName, {encoding:'utf8', flag:'r'});
+  }
+  const globalConfigDataJson = configData ? JSON.parse(configData): '';
+  return globalConfigDataJson;
+}
+function writeFeatureFilesToFinalFolder(specificFeatureFolder, arrayOfFiles) {
+  fs.readdirSync(specificFeatureFolder, {withFileTypes: true}).forEach((file) => {
+    let deepPath = specificFeatureFolder.slice(currentDirectory.length);
+    arrayOfFiles = arrayOfFiles || [];
+    if (fs.statSync(specificFeatureFolder + "/" + file.name).isDirectory()) {
+      arrayOfFiles = writeFeatureFilesToFinalFolder(specificFeatureFolder + "/" + file.name, arrayOfFiles);
+    }else{
+      // deepPath = deepPath.indexOf('/base') == 0 ? deepPath.replace('/base', '') : 
+      //     deepPath.indexOf('/client') == 0 ? deepPath.replace('/client', ''): deepPath;
+      const finalDirectoryPath = rootFinalFolder + deepPath;
+      if(!fs.existsSync(finalDirectoryPath)){
+        fs.mkdirSync(finalDirectoryPath, {recursive: true});
+      }
+      fs.copyFileSync(specificFeatureFolder + '/' + file.name, finalDirectoryPath + '/' + file.name);
     }
   });
+}
+function writeFilesToFinalDirectory(featuresFolder, featureConfig){
+  const specificFeatureFolder = featuresFolder + '/' + featureConfig[0];
+  writeFeatureFilesToFinalFolder(specificFeatureFolder);
+
+}
+function readFilesFromProgramDirectory(object, rootFinalFolder){
+  const directoryName = object[0];
+  const featuresFolder = rootClientFolder + '/' + directoryName;
+  const programTestConfigJson = fs.readFileSync(featuresFolder + '/' + programTestConfigName, {encoding:'utf8', flag:'r'});
+  const programTestConfigArray = programTestConfigJson ? Object.entries(JSON.parse(programTestConfigJson)): [];
+  programTestConfigArray.forEach(featureConfig => {
+    if(featureConfig[1]){
+      writeFilesToFinalDirectory(featuresFolder , featureConfig);
+    }
+  })
+}
+function createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder){
+  removeFinalFolder();
+  const baseGlobalConfigDataJson = getGlobalConfigData(rootBaseFolder, globalTestConfigName);
+  const clientGlobalConfigDataJson = getGlobalConfigData(rootClientFolder, globalTestConfigName);
+  const baseGlobalConfigDataArray = Object.entries(baseGlobalConfigDataJson);
+  const clientGlobalConfigDataArray = Object.entries(clientGlobalConfigDataJson);
+  const mergedGlobalConfigTestData = {
+    fileName: globalTestConfigName,
+    mergedData: {...baseGlobalConfigDataJson, ...clientGlobalConfigDataJson}
+  };
+  clientGlobalConfigDataArray.forEach(data => {
+    const innerObjArray = Object.entries(data[1]);
+    innerObjArray.forEach(innerObj => {
+      console.log(innerObj);
+      if(innerObj[1]){
+        readFilesFromProgramDirectory(innerObj, rootFinalFolder);
+      }
+    })
+  })
+  // const mergedGlobalConfigTestData = getMergedTestConfig(rootBaseFolder, rootClientFolder, globalTestConfigName);
+  writeInFinalFolder(rootFinalFolder , mergedGlobalConfigTestData);
+  //const globalConfigDataArray = Object.entries(mergedGlobalConfigTestData.mergedData);
+  
+  // globalConfigDataArray.forEach(featureFolder => {
+  //   console.log(featureFolder);
+  //   if(featureFolder[1]){
+  //     writeFeatureFolderToFinalFolder(rootBaseFolder, rootClientFolder, featureFolder[0]);
+  //   }
+  // });
 }
 
 createFinalFolderWithGlobalConfig(rootBaseFolder, rootClientFolder);
 
-function generateTestPlaylist(){
-  const globalConfigData = fs.readFileSync(rootFinalFolder + '/' + globalTestConfigName, {encoding:'utf8', flag:'r'});
-  const jsonGlobalConfigData = globalConfigData ? JSON.parse(globalConfigData): '';
-  const globalConfigDataArray = Object.entries(jsonGlobalConfigData);
-  globalConfigDataArray.forEach(function(data) {
-    if(data[1]){
-      let fileData = fs.readFileSync(rootFinalFolder + `/${data[0]}/` + featureTestConfigName,{encoding:'utf8', flag:'r'});
-      jsonGlobalConfigData[data[0]] = JSON.parse(fileData);
-    }
-  });
-  fs.writeFileSync(process.cwd() + '/testPlaylist.json', JSON.stringify(jsonGlobalConfigData));
-}
+// function generateTestPlaylist(){
+//   const globalConfigData = fs.readFileSync(rootFinalFolder + '/' + globalTestConfigName, {encoding:'utf8', flag:'r'});
+//   const jsonGlobalConfigData = globalConfigData ? JSON.parse(globalConfigData): '';
+//   const globalConfigDataArray = Object.entries(jsonGlobalConfigData);
+//   globalConfigDataArray.forEach(function(data) {
+//     if(data[1]){
+//       let fileData = fs.readFileSync(rootFinalFolder + `/${data[0]}/` + featureTestConfigName,{encoding:'utf8', flag:'r'});
+//       jsonGlobalConfigData[data[0]] = JSON.parse(fileData);
+//     }
+//   });
+//   fs.writeFileSync(process.cwd() + '/testPlaylist.json', JSON.stringify(jsonGlobalConfigData));
+// }
 
-generateTestPlaylist();
+// generateTestPlaylist();

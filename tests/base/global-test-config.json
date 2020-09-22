@@ -1,4 +1,7 @@
 {
-  "feature-A": true,
-  "feature-B": true
+  "baseConfig":
+  {
+    "program-base": true,
+    "program-1389": true
+  }
 }
